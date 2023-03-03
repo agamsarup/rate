@@ -31,14 +31,17 @@ func (r *SlidingWindowRateLimiter) Allow(id string) bool {
 
 	r.updateWindowsIfApplicable()
 
-	r.memoryStore.Increment(id, 1)
 	prevWindowContibutionFactor := float64(1) - float64(r.curRequestTimestamp.Sub(r.curWindowStartTime))/float64(r.windowSize)
 	prevWindowRequests := float64(r.memoryStore.PreviousWindowCount(id))
 	curWindowRequests := float64(r.memoryStore.CurrentWindowCount(id))
 
-	effectiveRequestsByWindow := prevWindowContibutionFactor*prevWindowRequests + curWindowRequests
+	effectiveRequestsByWindow := prevWindowContibutionFactor*prevWindowRequests + curWindowRequests + 1
 
-	return effectiveRequestsByWindow <= float64(r.maxAllowedRequests)
+	allow := effectiveRequestsByWindow <= float64(r.maxAllowedRequests)
+	if allow {
+		r.memoryStore.Increment(id, 1)
+	}
+	return allow
 }
 
 func (r *SlidingWindowRateLimiter) updateWindowsIfApplicable() {
